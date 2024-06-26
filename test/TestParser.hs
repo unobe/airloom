@@ -23,9 +23,11 @@ parseSourceLineTest =
         -- loom:start cases
         assertEqual "" (SourceTagLine (FragmentStartTag "b")) (parseSourceLine "   loom:start(b)   ")
         assertEqual "" (SourceTagLine (FragmentStartTag "a")) (parseSourceLine "loom:start(a)")
+        assertEqual "" (SourceTagLine (FragmentStartTag "/usr/test/a.js")) (parseSourceLine "loom:start(/usr/test/a.js)")
         -- loom:end cases
         assertEqual "" (SourceTagLine (FragmentEndTag "c")) (parseSourceLine "loom:end(c)")
         assertEqual "" (SourceTagLine (FragmentEndTag "d")) (parseSourceLine "    loom:end(d)   ")
+        assertEqual "" (SourceTagLine (FragmentEndTag "/usr/test/e.pm")) (parseSourceLine "    loom:end(/usr/test/e.pm)   ")
     )
 
 parseSourceFileTest :: Test
@@ -38,6 +40,9 @@ parseSourceFileTest =
         assertEqual "text line and start tag" [SourceTextLine "abc", SourceTagLine (FragmentStartTag "foo")] (parseSourceFile "abc\nloom:start(foo)")
         assertEqual "start tag and end tag" [SourceTagLine (FragmentStartTag "bar"), SourceTagLine (FragmentEndTag "bar")] (parseSourceFile "loom:start(bar)\nloom:end(bar)")
         assertEqual "text lines, start and end tags" [SourceTextLine "abc", SourceTagLine (FragmentStartTag "foo"), SourceTextLine "def", SourceTagLine (FragmentEndTag "foo"), SourceTextLine "ghi"] (parseSourceFile "abc\nloom:start(foo)\ndef\nloom:end(foo)\nghi")
+        assertEqual "text line and start tag /" [SourceTextLine "abc", SourceTagLine (FragmentStartTag "foo/a.pm")] (parseSourceFile "abc\nloom:start(foo/a.pm)")
+        assertEqual "start tag and end tag /" [SourceTagLine (FragmentStartTag "bar/long.js"), SourceTagLine (FragmentEndTag "bar/long.js")] (parseSourceFile "loom:start(bar/long.js)\nloom:end(bar/long.js)")
+        assertEqual "text lines, start and end tags /" [SourceTextLine "abc", SourceTagLine (FragmentStartTag "/foo/bar.js"), SourceTextLine "def", SourceTagLine (FragmentEndTag "/foo/bar.js"), SourceTextLine "ghi"] (parseSourceFile "abc\nloom:start(/foo/bar.js)\ndef\nloom:end(/foo/bar.js)\nghi")
     )
 
 parseDocFileTest :: Test
@@ -53,6 +58,9 @@ parseDocFileTest =
         assertEqual "loom:include(a) with spaces" [DocTagLine (TranscludeTag "b")] (parseDocFile "   loom:include(b)   ")
         assertEqual "loom:include(a) without spaces" [DocTagLine (TranscludeTag "a")] (parseDocFile "loom:include(a)")
         assertEqual "Multiple lines" [DocTextLine "abc", DocTagLine (TranscludeTag "a"), DocTextLine "def"] (parseDocFile "abc\nloom:include(a)\ndef")
+        assertEqual "loom:include(/a/b.js) with spaces" [DocTagLine (TranscludeTag "/a/b.js")] (parseDocFile "   loom:include(/a/b.js)   ")
+        assertEqual "loom:include(/a/b.js) without spaces" [DocTagLine (TranscludeTag "/a/b.js")] (parseDocFile "loom:include(/a/b.js)")
+        assertEqual "Multiple lines with /" [DocTextLine "abc", DocTagLine (TranscludeTag "a/bar.js"), DocTextLine "def"] (parseDocFile "abc\nloom:include(a/bar.js)\ndef")
     )
 
 parseHelloWorldSourceTest :: Test
@@ -61,32 +69,32 @@ parseHelloWorldSourceTest =
     ( do
         let fileContents =
               unlines
-                [ "// loom:start(file)",
+                [ "// loom:start(hello.c/file)",
                   "#include <stdio.h>",
                   "#include <stdlib.h>",
                   "",
                   "int main(void)",
                   "{",
-                  "    // loom:start(printf)",
+                  "    // loom:start(hello.c/printf)",
                   "    printf(\"Hello, World!\\n\");",
-                  "    // loom:end(printf)",
+                  "    // loom:end(hello.c/printf)",
                   "    return EXIT_SUCCESS;",
                   "}",
-                  "// loom:end(file)"
+                  "// loom:end(hello.c/file)"
                 ]
         let expected =
-              [ SourceTagLine (FragmentStartTag "file"),
+              [ SourceTagLine (FragmentStartTag "hello.c/file"),
                 SourceTextLine "#include <stdio.h>",
                 SourceTextLine "#include <stdlib.h>",
                 SourceTextLine "",
                 SourceTextLine "int main(void)",
                 SourceTextLine "{",
-                SourceTagLine (FragmentStartTag "printf"),
+                SourceTagLine (FragmentStartTag "hello.c/printf"),
                 SourceTextLine "    printf(\"Hello, World!\\n\");",
-                SourceTagLine (FragmentEndTag "printf"),
+                SourceTagLine (FragmentEndTag "hello.c/printf"),
                 SourceTextLine "    return EXIT_SUCCESS;",
                 SourceTextLine "}",
-                SourceTagLine (FragmentEndTag "file")
+                SourceTagLine (FragmentEndTag "hello.c/file")
               ]
         assertEqual "Parsing source file" expected (parseSourceFile fileContents)
     )
@@ -104,13 +112,13 @@ parseHelloWorldDocTest =
                   "function for printing text is called `printf`, and we use it like this:",
                   "",
                   "```c",
-                  "loom:include(printf)",
+                  "loom:include(hello.c/printf)",
                   "```",
                   "",
                   "The whole program looks like this:",
                   "",
                   "```c",
-                  "loom:include(file)",
+                  "loom:include(hello.c/file)",
                   "```"
                 ]
         let expected =
@@ -121,13 +129,13 @@ parseHelloWorldDocTest =
                 DocTextLine "function for printing text is called `printf`, and we use it like this:",
                 DocTextLine "",
                 DocTextLine "```c",
-                DocTagLine (TranscludeTag "printf"),
+                DocTagLine (TranscludeTag "hello.c/printf"),
                 DocTextLine "```",
                 DocTextLine "",
                 DocTextLine "The whole program looks like this:",
                 DocTextLine "",
                 DocTextLine "```c",
-                DocTagLine (TranscludeTag "file"),
+                DocTagLine (TranscludeTag "hello.c/file"),
                 DocTextLine "```"
               ]
         assertEqual "Parsing documentation file" expected (parseDocFile fileContents)

@@ -100,4 +100,4 @@ loomIncludeRegex = tagRegex "loom:include"
 -- Makes a regular expression for matching a tag with the given name.
 tagRegex :: String -> String
 tagRegex s =
-  "^.*" ++ s ++ "\\(([a-zA-Z0-9_,':]+)\\).*$"
+  "^.*" ++ s ++ "\\(([^\\(\\)]+)\\).*$"
